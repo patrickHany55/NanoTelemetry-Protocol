@@ -150,6 +150,25 @@ def main():
 
     except KeyboardInterrupt:
         print("[SERVER] Shutting down gracefully...")
+    
+    finally:
+        # Process any remaining packets in reorder buffer on shutdown
+        reorder_buffer.sort(key=lambda p: p["timestamp"])
+        for pkt in reorder_buffer:
+            p_writer.writerow([
+                pkt["device_id"], pkt["seq"], pkt["timestamp"],
+                f"{pkt['arrival_time']:.6f}", pkt["duplicate_flag"], pkt["gap_flag"]
+            ])
+
+        # Close all resources
+        p_fp.close()
+        e_fp.close()
+        sock.close()
+        print("[SERVER] Closed. All remaining packets flushed.")
+        p_fp.close()
+        e_fp.close()
+        sock.close()
+        print("[SERVER] Closed. All remaining packets flushed.")
 
 
 if __name__ == '__main__':
