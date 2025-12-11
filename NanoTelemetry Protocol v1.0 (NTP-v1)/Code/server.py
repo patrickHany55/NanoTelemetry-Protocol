@@ -51,5 +51,106 @@ def main():
     if expanded_new:
         e_writer.writerow(["device_id","seq","reading_index","reading_value","timestamp","arrival_time","duplicate_flag","gap_flag"])
 
+    # ========== State Tracking ==========
+    last_seq = {}
+    reorder_buffer = []
+
+    # ========== Main Receive Loop ==========
+    try:
+        while True:
+            try:
+                data, addr = sock.recvfrom(4096)
+            except KeyboardInterrupt:
+                break
+
+            arrival = now()
+
+            # ========== Parse Header ==========
+            if len(data) < HEADER_LEN:
+                print("[SERVER] Dropped too-small packet")
+                continue
+
+            version, msg_type, flags, device_id, seq, timestamp = struct.unpack(
+                HEADER_FMT, data[:HEADER_LEN]
+            )
+
+            payload = data[HEADER_LEN:]
+
+            # ========== Validate Payload Size ==========
+            if len(payload) > PAYLOAD_LIMIT:
+                print(f"[SERVER] Dropped packet: payload {len(payload)} > {PAYLOAD_LIMIT}")
+                continue
+
+            # ========== Duplicate & Gap Detection ==========
+            dup = 0
+            gap = 0
+            if device_id in last_seq:
+                prev = last_seq[device_id]
+                if seq <= prev:
+                    dup = 1
+                elif seq > prev + 1:
+                    gap = 1
+
+            if device_id not in last_seq or seq > last_seq[device_id]:
+                last_seq[device_id] = seq
+
+            # ========== Add to Reorder Buffer ==========
+            reorder_buffer.append({
+                "device_id": device_id,
+                "seq": seq,
+                "timestamp": timestamp,
+                "arrival_time": arrival,
+                "duplicate_flag": dup,
+                "gap_flag": gap,
+                "msg_type": msg_type,
+                "flags": flags,
+                "payload": payload
+            })
+
+            # ========== Process Ready Packets ==========
+            cutoff = now() - REORDER_WINDOW
+            ready = [p for p in reorder_buffer if p["arrival_time"] <= cutoff]
+            reorder_buffer = [p for p in reorder_buffer if p["arrival_time"] > cutoff]
+
+            ready.sort(key=lambda p: p["timestamp"])
+
+            # ========== Log Packets to CSV ==========
+            for pkt in ready:
+                p_writer.writerow([
+                    pkt["device_id"], pkt["seq"], pkt["timestamp"],
+                    f"{pkt['arrival_time']:.6f}", pkt["duplicate_flag"], pkt["gap_flag"]
+                ])
+
+                # ========== Unpack Batch Data ==========
+                if pkt["msg_type"] == MSG_TYPE_DATA:
+                    if pkt["flags"] & 0x01:
+                        if len(pkt["payload"]) >= 1:
+                            count = pkt["payload"][0]
+                            offset = 1
+                            for i in range(count):
+                                if offset + 4 <= len(pkt["payload"]):
+                                    val = struct.unpack_from('!f', pkt["payload"], offset)[0]
+                                    offset += 4
+                                    e_writer.writerow([
+                                        pkt["device_id"], pkt["seq"], i, f"{val:.6f}",
+                                        pkt["timestamp"], f"{pkt['arrival_time']:.6f}",
+                                        pkt["duplicate_flag"], pkt["gap_flag"]
+                                    ])
+                    else:
+                        if len(pkt["payload"]) >= 4:
+                            val = struct.unpack('!f', pkt["payload"][:4])[0]
+                            e_writer.writerow([
+                                pkt["device_id"], pkt["seq"], 0, f"{val:.6f}",
+                                pkt["timestamp"], f"{pkt['arrival_time']:.6f}",
+                                pkt["duplicate_flag"], pkt["gap_flag"]
+                            ])
+
+                p_fp.flush()
+                e_fp.flush()
+
+    except KeyboardInterrupt:
+        print("[SERVER] Shutting down gracefully...")
+
+
 if __name__ == '__main__':
     main()
