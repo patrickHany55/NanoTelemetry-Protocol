@@ -4,63 +4,52 @@ import time
 import csv
 import os
 
-# Header format: version(1), msg_type(1), flags(1), device_id(1), seq(4), timestamp(4)
+# Protocol header format and constants
 HEADER_FMT = '!BBBBII'
 HEADER_LEN = struct.calcsize(HEADER_FMT)
 
 MSG_TYPE_DATA = 1
 MSG_TYPE_HEARTBEAT = 2
 
+# Reorder buffer window: packets within this time window can be reordered
+REORDER_WINDOW_MS = 120
+REORDER_WINDOW = REORDER_WINDOW_MS / 1000.0
+
+# Maximum payload size enforcement
+PAYLOAD_LIMIT = 200
+
+def now():
+    """Get current timestamp."""
+    return time.time()
+
 def main():
     HOST = "0.0.0.0"
     PORT = 12000
-    CSV_FILE = "NanoTelemetry_log_v1.csv"
 
-    # create UDP socket
+    # CSV output files for logging
+    PACKET_CSV = "NanoTelemetry_log_v1.csv"
+    EXPANDED_CSV = "NanoTelemetry_log_v1_expanded.csv"
+
+    # ========== Initialize UDP Socket ==========
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind((HOST, PORT))
     print(f"[SERVER] Listening on {HOST}:{PORT}")
 
-    # prepare CSV
-    header_needed = not os.path.exists(CSV_FILE)
-    csv_file = open(CSV_FILE, "a", newline="")
-    writer = csv.writer(csv_file)
-    if header_needed:
-        writer.writerow(["device_id", "seq", "timestamp", "arrival_time", "duplicate_flag", "gap_flag"])
-        csv_file.flush()
+    # ========== Initialize CSV Writers ==========
+    # Packet-level CSV: logs each received packet
+    packet_new = not os.path.exists(PACKET_CSV)
+    p_fp = open(PACKET_CSV, "a", newline="")
+    p_writer = csv.writer(p_fp)
+    if packet_new:
+        p_writer.writerow(["device_id","seq","timestamp","arrival_time","duplicate_flag","gap_flag"])
 
-    last_seq = {} 
+    # Expanded CSV: unpacks batch packets into individual readings
+    expanded_new = not os.path.exists(EXPANDED_CSV)
+    e_fp = open(EXPANDED_CSV, "a", newline="")
+    e_writer = csv.writer(e_fp)
+    if expanded_new:
+        e_writer.writerow(["device_id","seq","reading_index","reading_value","timestamp","arrival_time","duplicate_flag","gap_flag"])
 
-    try:
-        while True:
-            data, addr = sock.recvfrom(1024)
-            arrival = time.time()
-
-            if len(data) < HEADER_LEN:
-                print("[SERVER] Ignored too-small packet")
-                continue
-
-            version, msg_type, flags, device_id, seq, timestamp = struct.unpack(HEADER_FMT, data[:HEADER_LEN])
-
-            duplicate_flag = 0
-            gap_flag = 0
-            if device_id in last_seq:
-                prev = last_seq[device_id]
-                if seq <= prev:
-                    duplicate_flag = 1
-                elif seq > prev + 1:
-                    gap_flag = 1
-            last_seq[device_id] = seq
-
-            writer.writerow([device_id, seq, timestamp, f"{arrival:.6f}", duplicate_flag, gap_flag])
-            csv_file.flush()
-    except KeyboardInterrupt:
-        print("\n[SERVER] Interrupted by user. Closing socket and exiting...")
-    finally:
-        sock.close()
-        csv_file.close()
-        print("[SERVER] Socket closed. CSV saved.")
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
