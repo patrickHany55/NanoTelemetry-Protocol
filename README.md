@@ -59,7 +59,7 @@ Batch mode: count (1 byte) + N×float32
 
 
 The client automatically clamps batch size.
-🚀 How to Run (Linux)
+How to Run (Linux)
 1. Install Dependencies
 sudo apt update
 sudo apt install -y iproute2 tcpdump
@@ -101,7 +101,7 @@ All output files are placed inside:
 
 NanoTelemetry Protocol v1.0 (NTP-v1)/Output/
 
-🔧 Components Overview
+Components Overview
 client.py
 
 Sends telemetry packets at a configurable interval
@@ -147,7 +147,7 @@ run_baseline.sh	Runs server + client + packet capture
 run_loss5.sh	Adds 5% loss then executes test
 run_delay_jitter.sh	Adds delay/jitter then executes test
 clear_netem.sh	Removes all network shaping rules
-📦 Requirements
+Requirements
 
 Python 3.8+
 
@@ -159,13 +159,13 @@ tcpdump
 
 A network interface supporting netem (e.g., eth0, ens33, etc.)
 
-📘 Mini-RFC
+Mini-RFC
 
 Protocol specification available in:
 
 Mini-RFC/
 
-🧪 Validation
+Validation
 
 The system has been validated with:
 
