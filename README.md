@@ -19,7 +19,7 @@ Baseline (no impairment)
 100 ms ± 10 ms delay & jitter
 
 5% packet loss
-📁 Repository Structure
+Repository Structure
 NanoTelemetry-Protocol/
 │
 ├── CSE361 Project Description_updated.pdf
@@ -39,7 +39,7 @@ NanoTelemetry-Protocol/
         ├── run_loss5.sh              # Test 2 – 5% packet loss
         ├── run_delay_jitter.sh       # Test 3 – 100ms delay ±10ms
         └── clear_netem.sh            # Reset network interface shaping rules
-        📝 Protocol Summary
+        Protocol Summary
 Header Format (HEADER_FMT = !BBBBII)
 Field	Size	Description
 Version	1B	Protocol version (1)
@@ -88,7 +88,7 @@ Test 3 — 100 ms Delay ± 10 ms Jitter
 Clear netem rules
 ./clear_netem.sh
 
-📊 Output Files
+Output Files
 
 Each run produces:
 
