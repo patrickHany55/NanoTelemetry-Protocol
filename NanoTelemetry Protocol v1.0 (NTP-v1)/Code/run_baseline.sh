@@ -1,24 +1,37 @@
+#!/usr/bin/env bash
+# Phase 2 - Baseline Test (no network impairment)
+
 PORT=12000
-CSV="NanoTelemetry_log_v1.csv"
+CSV1=NanoTelemetry_log_v1.csv
+CSV2=NanoTelemetry_log_v1_expanded.csv
+PCAP=capture_baseline.pcap
+DURATION=30
 
-echo "Cleaning old CSV..."
-rm -f "$CSV"
+echo "[BASELINE] Clearing old files..."
+rm -f "$CSV1" "$CSV2" "$PCAP"
 
-echo "Starting server..."
+echo "[BASELINE] Starting server..."
 python3 server.py &
 SERVER_PID=$!
 sleep 1
 
-echo "Starting one client..."
-python3 client.py &
+echo "[BASELINE] Starting client..."
+DURATION=$DURATION BATCH_SIZE=3 INTERVAL=0.1 python3 client.py &
 CLIENT_PID=$!
 
-echo "Running for 30 seconds..."
-sleep 30
+echo "[BASELINE] Starting packet capture..."
+sudo timeout $((DURATION+5)) tcpdump -i any udp port $PORT -w "$PCAP" 
+>/dev/null 2>&1 &
 
-echo "Stopping server and client..."
-kill $SERVER_PID 2>/dev/null
+echo "[BASELINE] Running for $DURATION seconds..."
+sleep $((DURATION+2))
+
+echo "[BASELINE] Stopping server and client..."
 kill $CLIENT_PID 2>/dev/null
-sleep 1
+kill $SERVER_PID 2>/dev/null
 
-echo "Done. Check $CSV for logged packets."
+echo "[BASELINE] Done. Output files:"
+echo " → $CSV1"
+echo " → $CSV2"
+echo " → $PCAP"
+
