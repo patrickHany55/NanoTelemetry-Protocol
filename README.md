@@ -1,7 +1,7 @@
-NanoTelemetry Protocol v1.0 — Phase 2
+NanoTelemetry Protocol v1.0 — Phase 2 and 3
 UDP Telemetry System with Batching, Reordering, Loss & Delay Testing
 
-This repository implements Phase 2 of the NanoTelemetry Protocol (NTP-v1), a lightweight UDP-based telemetry system designed for embedded devices.
+This repository implements Phase 2 and 3 of the NanoTelemetry Protocol (NTP-v1), a lightweight UDP-based telemetry system designed for embedded devices.
 Phase 2 introduces:
 
 Batching (up to 49 readings per packet under 200 bytes)
@@ -178,4 +178,5 @@ random packet loss
 Wireshark packet captures
 
 CSV telemetry logs
-
+# Video Demo Link:
+https://drive.google.com/file/d/185dnR8Uth5A4JEioryVVhCVWyb702QNS/view?usp=sharing
